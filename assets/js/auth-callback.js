@@ -1,42 +1,17 @@
-// auth-callback.js — Handles GitHub OAuth callback
-
-// ✅ Your deployed Vercel backend endpoint
 const BACKEND_URL = "https://ebillr-oauth-backend.vercel.app/api/auth/github-login";
 
-// Get query parameters from URL
-function getQueryParam(name) {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get(name);
-}
-
 (async function handleAuthCallback() {
-  const code = getQueryParam("code");
-  const state = getQueryParam("state");
-  const error = getQueryParam("error");
-
-  if (error) {
-    alert(`GitHub login error: ${error}`);
-    window.location.href = "login.html";
-    return;
-  }
-
-  if (!code) {
-    alert("No authorization code found.");
-    window.location.href = "login.html";
-    return;
-  }
-
-  // Optional: validate state parameter
+  const code = new URLSearchParams(window.location.search).get("code");
+  const state = new URLSearchParams(window.location.search).get("state");
   const storedState = sessionStorage.getItem("oauth_state");
-  if (storedState && state !== storedState) {
-    alert("Auth failed (state mismatch). Return to login and try again.");
-    window.location.href = "login.html";
-    return;
+
+  if (!code || !state || state !== storedState) {
+    alert("Authentication failed. Please log in again.");
+    return (window.location.href = "login.html");
   }
 
   try {
-    // Send code to backend for token exchange
-    const response = await fetch(BACKEND_URL, {
+    const res = await fetch(BACKEND_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -45,21 +20,21 @@ function getQueryParam(name) {
       })
     });
 
-    const data = await response.json();
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    if (data.error) {
-      alert(`Error: ${data.error}`);
-      window.location.href = "login.html";
-      return;
+    const data = await res.json();
+
+    if (data.error || !data.access_token) {
+      throw new Error(data.error || "No access token returned");
     }
 
-    // Save token securely in session storage
+    // Store token + login flag
     sessionStorage.setItem("github_token", data.access_token);
+    sessionStorage.setItem("is_logged_in", "true");
 
-    // Redirect to dashboard
     window.location.href = "e-billr.html";
   } catch (err) {
-    alert(`Request failed: ${err.message}`);
+    alert(`Login failed: ${err.message}`);
     window.location.href = "login.html";
   }
 })();
