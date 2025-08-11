@@ -1,6 +1,6 @@
 (function(){
   const CLIENT_ID = "Ov23liQgRHKpfR6JJzHi";
-  const REDIRECT_URI = "https://e-billr.github.io/auth-callback.html"; // Fixed to your exact GitHub Pages URL
+  const REDIRECT_URI = "https://ebillr.github.io/auth-callback.html";
   const SCOPE = "repo user";
 
   function base64url(buffer){
@@ -24,8 +24,8 @@
 
   const state = randomString(16);
   const verifier = randomString(64);
-  localStorage.setItem('pkce_state', state);
-  localStorage.setItem('pkce_verifier', verifier);
+  sessionStorage.setItem('pkce_state', state); // store temporarily
+  sessionStorage.setItem('pkce_verifier', verifier);
 
   sha256(verifier).then(hash => {
     const challenge = base64url(hash);
