@@ -1,12 +1,52 @@
-// e-billr.js - dashboard code (no imports)
+// e-billr.js - dashboard code (with popup login requirement)
 (function(){
   const session = window.eb_getSession && window.eb_getSession();
   if (!session){
-    // show modal + redirect to login
-    const modal = document.getElementById('session-modal');
-    if (modal) modal.classList.remove('hidden');
-    setTimeout(()=> window.location.href = 'login.html', 1300);
-    return;
+    // Show blur + popup instead of instant redirect
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.6)";
+    overlay.style.backdropFilter = "blur(8px)";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.zIndex = "9999";
+
+    const popup = document.createElement("div");
+    popup.style.background = "#fff";
+    popup.style.color = "#000";
+    popup.style.padding = "25px 30px";
+    popup.style.borderRadius = "12px";
+    popup.style.textAlign = "center";
+    popup.style.boxShadow = "0 4px 15px rgba(0,0,0,0.2)";
+    popup.style.width = "300px";
+    popup.style.maxWidth = "90%";
+
+    popup.innerHTML = `
+      <h2 style="margin-bottom: 10px;">Please Sign In</h2>
+      <p style="margin-bottom: 20px;">You must log in to continue.</p>
+      <button id="popup-login-btn" style="
+        background: #000;
+        color: #fff;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 15px;
+      ">Login</button>
+    `;
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    document.getElementById("popup-login-btn").addEventListener("click", () => {
+      window.location.href = "login.html";
+    });
+    return; // Stop further dashboard execution
   }
 
   // helper for GitHub API calls using token
@@ -36,7 +76,6 @@
       if (avatar) { avatar.src = user.avatar_url; userInfoBlock.style.display = 'flex'; }
     } catch(err){
       console.error('Failed to fetch user', err);
-      // likely invalid token: destroy and redirect
       window.eb_destroySession && window.eb_destroySession();
       window.location.href = 'login.html';
       return;
@@ -76,7 +115,6 @@
     let currentRepo = null;
     async function selectRepo(repo){
       currentRepo = repo;
-      // visually mark
       Array.from(repoListEl.children).forEach(c=>c.classList.remove('active'));
       const found = Array.from(repoListEl.children).find(c => c.textContent === repo.full_name);
       if (found) found.classList.add('active');
