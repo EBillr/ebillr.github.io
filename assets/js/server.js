@@ -1,31 +1,20 @@
-// server.js - minimal Express auth exchange + optional proxy
-// install: npm i express node-fetch cors dotenv
+// server.js
 import express from 'express';
 import fetch from 'node-fetch';
-import cors from 'cors';
-import dotenv from 'dotenv';
-dotenv.config();
+import bodyParser from 'body-parser';
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
-if (!CLIENT_ID || !CLIENT_SECRET) {
-  console.warn('GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET not set in env');
-}
+const CLIENT_ID = "Ov23liQgRHKpfR6JJzHi";
+const CLIENT_SECRET = "YOUR_CLIENT_SECRET"; // from GitHub OAuth settings
 
-// Exchange code endpoint
 app.post('/auth/exchange', async (req, res) => {
   const { code, code_verifier, redirect_uri } = req.body;
-  if (!code) return res.status(400).json({ message: 'missing code' });
-
   try {
-    // Exchange code for access token
     const tokenResp = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
-      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
@@ -34,26 +23,11 @@ app.post('/auth/exchange', async (req, res) => {
         code_verifier
       })
     });
-    const tokenJson = await tokenResp.json();
-    if (tokenJson.error) return res.status(400).json(tokenJson);
-
-    const access_token = tokenJson.access_token;
-    // fetch user for convenience
-    const userResp = await fetch('https://api.github.com/user', {
-      headers: { Authorization: `token ${access_token}`, Accept: 'application/vnd.github.v3+json' }
-    });
-    const user = await userResp.json();
-
-    return res.json({ access_token, scope: tokenJson.scope, token_type: tokenJson.token_type, user });
+    const tokenData = await tokenResp.json();
+    res.json(tokenData);
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'exchange failed' });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// OPTIONAL: lightweight proxy routes (if you prefer server to call GitHub)
-// e.g., POST /api/repos/:owner/:repo/contents -> creates/updates file
-// Implement only if you want server-mediated GitHub actions (adds extra security)
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=> console.log('Server running on', PORT));
+app.listen(3000, () => console.log('OAuth server running on port 3000'));
