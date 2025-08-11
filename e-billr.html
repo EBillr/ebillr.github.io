@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>E-Billr Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="assets/css/styles.css" rel="stylesheet">
+</head>
+<body>
+  <header id="site-header" class="site-header">
+    <a class="brand" href="index.html">E-Billr</a>
+    <div class="header-actions">
+      <div id="user-info" style="display:none;align-items:center;gap:8px">
+        <img id="user-avatar" class="avatar-sm" src="" alt="avatar" style="width:36px;height:36px;border-radius:999px"/>
+        <span id="user-name" class="muted"></span>
+      </div>
+      <button class="icon-btn theme-toggle" title="Toggle theme" aria-label="Toggle theme"></button>
+      <button id="logout-btn" class="btn ghost">Logout</button>
+    </div>
+  </header>
+
+  <div class="radial-blur"></div>
+
+  <main id="main-content" class="page-container">
+    <section class="card">
+      <h2 style="margin-top:0;color:var(--muted)">Dashboard</h2>
+      <p class="muted">Your repositories and bill editor will appear here once logged in.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-left">
+      <a href="#">License</a>
+      <a href="#">GitHub</a>
+      <a href="#">Support</a>
+    </div>
+    <div class="footer-right">© 2025 Laksh Kukreja. All rights reserved.</div>
+  </footer>
+
+  <!-- Modal: shown if no session; DOES NOT redirect automatically -->
+  <div id="session-modal" class="modal hidden" aria-hidden="true">
+    <div class="card" style="max-width:420px;padding:20px;text-align:center">
+      <h3 style="margin:0 0 8px">Session Required</h3>
+      <p class="muted" style="margin:0 0 12px">You must log in with GitHub to access the dashboard.</p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+        <a href="login.html" class="btn primary">Login</a>
+        <button id="modal-close" class="btn ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/common.js"></script>
+  <script src="assets/js/session.js"></script>
+  <script>
+    /* e-billr behavior: show modal & blur *no redirect* unless user clicks */
+    document.addEventListener('DOMContentLoaded', () => {
+      const sess = eb_getSession();
+      const modal = document.getElementById('session-modal');
+      const main = document.getElementById('main-content');
+      const userInfo = document.getElementById('user-info');
+      const userName = document.getElementById('user-name');
+      const avatar = document.getElementById('user-avatar');
+
+      if (!sess) {
+        // show modal and blur background
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden','false');
+        main.classList.add('blurred');
+      } else {
+        // populate header user
+        userInfo.style.display = 'flex';
+        userName.textContent = sess.user?.login || 'User';
+        if (sess.user?.avatar_url) avatar.src = sess.user.avatar_url;
+      }
+
+      // clicking "Close" hides modal and un-blurs (user can browse but not use dashboard)
+      document.getElementById('modal-close').addEventListener('click', () => {
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden','true');
+        main.classList.remove('blurred');
+      });
+
+      // logout button
+      document.getElementById('logout-btn').addEventListener('click', () => {
+        eb_destroySession();
+        location.href = 'login.html';
+      });
+    });
+  </script>
+</body>
+</html>
