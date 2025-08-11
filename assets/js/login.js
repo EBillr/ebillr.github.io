@@ -1,53 +1,47 @@
-/* assets/js/login.js
-   - PKCE + state stored in sessionStorage (survives redirect)
-   - REDIRECT_URI hardcoded to your GitHub Pages location
-*/
-(function(){
-  const CLIENT_ID = "Ov23liQgRHKpfR6JJzHi";
-  const REDIRECT_URI = "https://ebillr.github.io/auth-callback.html"; // HARD-CODED
-  const SCOPE = "repo user";
-  const LOGIN_BTN_ID = "github-login-btn";
+// login.js
+const CLIENT_ID = "Ov23liQgRHKpfR6JJzHi";
+const REDIRECT_URI = "https://ebillr.github.io/auth-callback.html";
 
-  function base64url(buffer){
-    const bytes = new Uint8Array(buffer);
-    let str = '';
-    for (let i=0;i<bytes.byteLength;i++) str += String.fromCharCode(bytes[i]);
-    return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+// Generate PKCE code verifier & challenge
+async function generateCodeChallenge(codeVerifier) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(codeVerifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function generateRandomString(length) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
+  return result;
+}
 
-  async function sha256(str){
-    const enc = new TextEncoder().encode(str);
-    return await crypto.subtle.digest('SHA-256', enc);
-  }
+document.addEventListener("DOMContentLoaded", async () => {
+  const loginBtn = document.getElementById("github-login");
+  
+  const codeVerifier = generateRandomString(128);
+  localStorage.setItem("code_verifier", codeVerifier);
 
-  function randStr(len=64){
-    const arr = new Uint8Array(len);
-    crypto.getRandomValues(arr);
-    return Array.from(arr).map(b => ('0' + (b % 36).toString(36)).slice(-1)).join('');
-  }
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    const btn = document.getElementById(LOGIN_BTN_ID);
-    if (!btn) {
-      console.warn('Login button not found:', LOGIN_BTN_ID);
-      return;
-    }
+  const state = generateRandomString(16);
+  localStorage.setItem("oauth_state", state);
 
-    // create fresh PKCE state & verifier (session-scoped)
-    const state = randStr(16);
-    const verifier = randStr(64);
-    sessionStorage.setItem('pkce_state', state);
-    sessionStorage.setItem('pkce_verifier', verifier);
+  const authUrl = `https://github.com/login/oauth/authorize` +
+    `?client_id=${CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+    `&scope=repo%20user` +
+    `&state=${state}` +
+    `&code_challenge=${codeChallenge}` +
+    `&code_challenge_method=S256`;
 
-    // build challenge
-    const digest = await sha256(verifier);
-    const challenge = base64url(digest);
-
-    const authUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(CLIENT_ID)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPE)}&state=${encodeURIComponent(state)}&code_challenge=${encodeURIComponent(challenge)}&code_challenge_method=s256`;
-
-    // DEBUG: show the exact URL in console (check redirect_uri param)
-    console.log('GitHub authorize URL:', authUrl);
-
-    btn.setAttribute('href', authUrl);
+  loginBtn.addEventListener("click", () => {
+    window.location.href = authUrl;
   });
-})();
+});
